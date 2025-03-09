@@ -58,16 +58,17 @@ if st.session_state.container == 1:
             #st.text(uploadedPDF.getvalue())
 
             # SHOW NAME
-            st.text(f"### FILE {i+1} ###")
-            st.text(f">    {uploadedPDF.name}")
+            #st.text(f"### FILE {i+1} ###")
+            #st.text(f">    {uploadedPDF.name}")
+
             # OPEN THE UPLOADED PDF WITH FITZ
             with fitz.open(stream=uploadedPDF.read(), filetype="pdf") as fitzPDF:
                 # SHOW THE NUMBER OF PAGES
-                st.text(f">    Number of pages: {fitzPDF.page_count}")
+                #st.text(f">    Number of pages: {fitzPDF.page_count}")
                 # CHECK IF PDF IS ENCRYPTED
                 if fitzPDF.is_encrypted:
                     # PRINT ENCRYPTED
-                    st.text(">    The PDF is locked (encrypted).")
+                    #st.text(">    The PDF is locked (encrypted).")
                     # LOG PDF TO DATAFRAME
                     lsdfPDF.append({'PDF_OBJECT': uploadedPDF,
                                     'FILE_NAME': uploadedPDF.name,
@@ -76,7 +77,7 @@ if st.session_state.container == 1:
                                     'BASE64':None})
                 else:
                     # PRINT NOT ENCRYPTED
-                    st.text(">    The PDF is not locked.")
+                    #st.text(">    The PDF is not locked.")
                     # LIST TO STORE BASE64 STRING OF EACH PAGE
                     lsb64Str = []
                     # ITERATE THROUGH EACH PAGE OF THE PDF
@@ -157,7 +158,7 @@ elif st.session_state.container == 2:
                         st.text('>    PDF PARSE SUCCESSFUL')
                         lsParsed.append(doc_parsed)
                         break
-            time.sleep(2)
+            time.sleep(3)
         # SAVE SESSION STATE
         st.session_state.parsedData = lsParsed
     else:
@@ -179,7 +180,7 @@ elif st.session_state.container == 2:
             with st.expander(f"file{i+1}: {file_name}"):
                 st.code(parsed_joined)          
     # CONFIM BUTTON
-    if st.button("CONFIRM2"):
+    if st.button("Next Step: Embedding & Indexing"):
         st.session_state.dfPDF = dfPDF.copy()
         st.session_state.container = 3
         st.rerun()
@@ -219,7 +220,7 @@ elif st.session_state.container == 3:
         st.text('Indexing Status: Already Indexed Data')
         indexedData = st.session_state.indexedData
     # CONFIM BUTTON
-    if st.button("Go to chat"):
+    if st.button("Next Step: Go to chat"):
         st.session_state.dfPDF = dfPDF.copy()
         st.session_state.container = 4
         st.rerun()
@@ -235,6 +236,12 @@ elif st.session_state.container == 4:
     st.markdown('<h3 style="color: lightgrey;">Step2: Parse PDFs</h3>', unsafe_allow_html=True)
     st.markdown('<h3 style="color: lightgrey;">Step3: Embedding Parsed PDFs into Index</h3>', unsafe_allow_html=True)
     st.markdown('<h3 style="color: black;">Step4: Chat with your PDFs</h3>', unsafe_allow_html=True)
+    # PREPARE BLANK MESSAGE LIST
+    if "messages" not in st.session_state:
+        st.session_state.messages = []
+    # EXPANDER
+    with st.expander('See Raw Json'):
+        st.json(st.session_state.messages)
 
     # PREP OPENAI
     from openai import OpenAI
@@ -246,14 +253,11 @@ elif st.session_state.container == 4:
     indexedData = st.session_state.indexedData
     query_engine = indexedData.as_query_engine()
 
-    # PREPARE BLANK MESSAGE LIST
-    if "messages" not in st.session_state:
-        st.session_state.messages = []
-
     # DISPLAY CHAT HISTORY
     for message in st.session_state.messages:
-        with st.chat_message(message["role"]):
-            st.markdown(message["content"])
+        if message['role'] != 'system':
+            with st.chat_message(message["role"]):
+                st.markdown(message["content"])
 
     # WHENEVER THERE IS CHAT INPUT
     if userPrompt := st.chat_input("Ask away"):
@@ -272,8 +276,8 @@ elif st.session_state.container == 4:
             # ADD SYSTEM RESPONSE TO MESSAGE LIST
             st.session_state.messages.append({'role': 'system', 'content': pdfResponse})   
             # TRIGGER SYSTEM RESPONSE TO DISPLAY
-            with st.chat_message("system"):
-                st.markdown(pdfResponse)
+            # with st.chat_message("system"):
+            #     st.markdown(pdfResponse)
         # OTHER LOOP
         else:
             # GET HISTORICAL CHAT EXCEPT LATEST USER PROMPT
@@ -291,19 +295,17 @@ elif st.session_state.container == 4:
                 model=st.session_state["openai_model"],
                 messages=histmsg)    
             gptPromptForRag = gptPromptForRag.choices[0].message.content
-
             # SEE THE RAG PROMPT
-            with st.chat_message("ragPrompt"):
-                st.markdown(gptPromptForRag)
-
+            # with st.chat_message("ragPrompt"):
+            #     st.markdown(gptPromptForRag)
 
             # USE THE GPT PROMPT FOR RAG TO ASK RAG ENGINE
             pdfResponse = str(query_engine.query(gptPromptForRag)) 
             # ADD SYSTEM RESPONSE TO MESSAGE LIST
             st.session_state.messages.append({'role': 'system', 'content': pdfResponse}) 
             # TRIGGER SYSTEM RESPONSE TO DISPLAY
-            with st.chat_message("system"):
-                st.markdown(pdfResponse)
+            # with st.chat_message("system"):
+            #     st.markdown(pdfResponse)
 
         # GET RESPONSE FROM CHATGPT
         clientResponse = client.chat.completions.create(
@@ -315,6 +317,8 @@ elif st.session_state.container == 4:
         # TRIGGER SYSTEM RESPONSE TO DISPLAY
         with st.chat_message("assistant"):
             st.markdown(gptResponse)
+
+        st.rerun()
 
     # ADD CLEAR CHAT BUTTON
     if st.button("Clear Chat"):
