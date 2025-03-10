@@ -47,6 +47,9 @@ def image_to_base64(img):
 if st.session_state.container == 1:
     # HEADER
     st.markdown('<h3 style="color: black;">Step1: Upload PDFs</h3>', unsafe_allow_html=True)
+    # API KEY
+    os.environ['OPENAI_API_KEY'] = st.text_input("openai_api_key:", "xxx") 
+    os.environ['LLAMA_CLOUD_API_KEY'] = st.text_input("llama_cloud_api_key:", "xxx") 
     # UPLOAD FILE AND CONVERT TO B64 IMAGES
     uploadedPDFs = st.file_uploader("Upload multiple PDF files", type=["pdf"], accept_multiple_files=True)
     if uploadedPDFs:
